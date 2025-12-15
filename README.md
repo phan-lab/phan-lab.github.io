@@ -1,2 +1,2 @@
 # phan-lab-docs
-Central documentation repository and website
+This repo hosts our documentation website located at phan-lab.github.io
