@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Multicore Resource Allocation | R2D2 Lab</title>
-  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="../../style.css?v=2">
 </head>
 <body>
   <header class="site-header">
@@ -28,21 +28,14 @@
           <p class="eyebrow">Project</p>
           <h1>Multicore Resource Allocation</h1>
           <p class="lede">
-            Designing and evaluating contention-aware schedulers and isolation strategies so multicore
-            systems deliver predictable performance under mixed workloads.
+            Dynamic cache and memory-bandwidth allocation that pairs with schedulers to keep multicore
+            real-time systems predictable—even as workloads, phases, and modes change.
           </p>
           <div class="actions">
             <a class="button primary" href="#docs">Jump to documentation</a>
+            <a class="button ghost" href="tutorials/index.html">Tutorials</a>
             <a class="button ghost" href="../../index.html#projects">Back to projects</a>
           </div>
-        </div>
-        <div class="card">
-          <h3>Quick facts</h3>
-          <ul class="check-list">
-            <li>Focus: real-time guarantees on shared multicore hardware.</li>
-            <li>Artifacts: kernel/runtime prototypes, benchmarks, traces.</li>
-            <li>Open questions: balancing latency, throughput, and isolation.</li>
-          </ul>
         </div>
       </div>
     </section>
@@ -53,23 +46,15 @@
           <p class="eyebrow">Overview</p>
           <h2>Why this matters</h2>
           <p>
-            Multicore platforms routinely multiplex latency-critical, throughput-oriented, and
-            best-effort workloads. Without careful allocation and scheduling, cache and memory
-            contention can break performance contracts and destabilize systems.
+            Multicore platforms multiplex latency-critical, throughput-oriented, and best-effort workloads on
+            shared caches and memory controllers. Static isolation leaves performance on the table and cannot
+            handle shifting phases, mixed modes, or new tasks.
           </p>
           <p>
-            This project aims to characterize these contention patterns and develop mechanisms—at both
-            OS and runtime layers—to deliver predictable execution while keeping systems efficient.
+            This project builds dynamic allocation policies that measure phase behavior, reassign cache capacity
+            and bandwidth in real time, and co-design those decisions with the scheduler. The result: lower tail
+            latency, higher schedulability, and predictable mode changes without sacrificing analyzability.
           </p>
-        </div>
-        <div class="card">
-          <h3>Initial objectives</h3>
-          <ul class="check-list">
-            <li>Survey hardware contention points (LLC, memory controllers, interconnect).</li>
-            <li>Prototype scheduling policies that adapt to observed interference.</li>
-            <li>Build repeatable benchmarks to measure isolation vs. utilization tradeoffs.</li>
-            <li>Document trace formats, setup scripts, and evaluation methodology.</li>
-          </ul>
         </div>
       </div>
     </section>
@@ -77,31 +62,36 @@
     <section id="docs" class="section shaded">
       <div class="container">
         <p class="eyebrow">Documentation</p>
-        <h2>Structure for experiment notes, guides, and results.</h2>
+        <h2>Frameworks and artifacts from the dissertation.</h2>
         <div class="grid cards">
           <div class="card">
-            <h3>System model</h3>
-            <p>Capture hardware specs, topology diagrams, and assumptions about workloads and constraints.</p>
+            <h3>DNA / DADNA</h3>
+            <p>Phase-aware profiling and runtime reallocation of cache and bandwidth to speed up soft real-time tasks and cut deadline misses.</p>
           </div>
           <div class="card">
-            <h3>Design docs</h3>
-            <p>Algorithms, scheduling policies, and resource partitioning strategies with rationale and tradeoffs.</p>
+            <h3>Omni</h3>
+            <p>Mode-aware allocations and transition protocol that keep multicore systems schedulable while modes change.</p>
           </div>
           <div class="card">
-            <h3>Implementation</h3>
-            <p>Kernel/runtime changes, configuration flags, and links to code or patches.</p>
+            <h3>DECNTR</h3>
+            <p>Control and resource co-design: choose controller variants and allocations jointly to maintain safety and robustness.</p>
           </div>
           <div class="card">
-            <h3>Evaluation</h3>
-            <p>Benchmark suites, experiment matrix, plotting scripts, and reproducibility checklist.</p>
+            <h3>RASCO</h3>
+            <p>Co-design of DAG scheduling and per-phase budgets to meet end-to-end deadlines on shared hardware.</p>
           </div>
           <div class="card">
-            <h3>Results</h3>
-            <p>Key charts, tables, and takeaways, including negative results and failure modes.</p>
+            <h3>Runtime & Platforms</h3>
+            <p>PREEMPT-RT and LITMUSRT prototypes, allocation hooks, and measurement tooling.</p>
+          </div>
+          <div class="card">
+            <h3>Tutorials</h3>
+            <p>Step-by-step guides for setup, profiling phases, and running experiments.</p>
+            <a class="button text" href="tutorials/index.html">Open tutorials</a>
           </div>
           <div class="card muted">
             <h3>Next steps</h3>
-            <p>Add pages or markdown files per section as documentation grows.</p>
+            <p>Fill in benchmarks, traces, algorithms, and configuration guides as documentation grows.</p>
           </div>
         </div>
       </div>

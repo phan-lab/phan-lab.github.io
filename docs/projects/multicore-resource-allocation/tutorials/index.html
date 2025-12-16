@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutorials | Multicore Resource Allocation</title>
+  <link rel="stylesheet" href="../../../style.css?v=2">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <div class="brand">
+        <img class="brand-logo" src="https://avatars.githubusercontent.com/phan-lab" alt="R2D2 Lab logo">
+        <span class="brand-text">R2D2 Lab</span>
+      </div>
+      <nav>
+        <a href="../index.html">Project Home</a>
+        <a href="../../../index.html#projects">All Projects</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="section">
+    <div class="container" style="max-width: 840px;">
+      <h1>Tutorials: Multicore Resource Allocation</h1>
+      <p class="lede">
+        Practical guides for setting up platforms, profiling task phases, running allocation frameworks, and
+        interpreting traces on PREEMPT-RT and LITMUSRT.
+      </p>
+
+      <h2>1. Environment setup</h2>
+      <p>
+        Install PREEMPT-RT or LITMUSRT with support for cache partitioning (e.g., CAT) and memory bandwidth
+        control (e.g., MBM/MBA). Ensure perf and tracing are available for phase profiling.
+      </p>
+      <ul>
+        <li>Kernel: enable real-time patch, perf events, and resource-control features (CAT/MBM).</li>
+        <li>Tooling: build schedulers/runtimes (DNA/DADNA, Omni, DECNTR, RASCO) and tracing scripts.</li>
+        <li>Baseline: capture hardware topology (cores, LLC ways, memory controllers) for experiments.</li>
+      </ul>
+
+      <h2>2. Profiling task phases (DNA/DADNA)</h2>
+      <p>
+        Profile representative runs to discover phase boundaries and resource sensitivity before enabling
+        dynamic allocation.
+      </p>
+      <ul>
+        <li>Collect per-phase metrics (cycles, LLC misses, bandwidth) with perf or hw counters.</li>
+        <li>Identify phases with distinct resource needs and map them to cache/bandwidth profiles.</li>
+        <li>Train the runtime to detect phase transitions and update allocations accordingly.</li>
+      </ul>
+
+      <h2>3. Running dynamic allocation</h2>
+      <p>
+        Enable the runtime scheduler, register tasks, and allow it to reallocate cache ways and bandwidth
+        based on observed phases or deadlines.
+      </p>
+      <ul>
+        <li>Configure per-task priorities/deadlines and initial cache/bandwidth budgets.</li>
+        <li>Start allocation daemon; verify reallocation events via logs and trace markers.</li>
+        <li>Measure latency distributions and deadline miss ratios before/after dynamic allocation.</li>
+      </ul>
+
+      <h2>4. Multi-mode transitions (Omni)</h2>
+      <p>
+        Use Omni to plan allocations per mode and keep transitions schedulable.
+      </p>
+      <ul>
+        <li>Define modes, task sets, and transition guards/triggers.</li>
+        <li>Compute feasible allocations per mode and during transitions to avoid contention spikes.</li>
+        <li>Trace mode switches and verify deadlines are maintained throughout transitions.</li>
+      </ul>
+
+      <h2>5. Control co-design (DECNTR)</h2>
+      <p>
+        Pair controller variants with resource budgets so closed-loop systems stay in safe sets.
+      </p>
+      <ul>
+        <li>List controller options (sampling periods, computational cost) and safety envelopes.</li>
+        <li>Choose allocations and controller variants jointly; deploy and monitor state trajectories.</li>
+        <li>Validate robustness to disturbances while meeting deadlines.</li>
+      </ul>
+
+      <h2>6. DAG workloads (RASCO)</h2>
+      <p>
+        Co-design scheduling and per-phase budgets for dependent tasks.
+      </p>
+      <ul>
+        <li>Model the DAG with execution times per resource configuration.</li>
+        <li>Compute placements and budgets that satisfy end-to-end deadlines.</li>
+        <li>Instrument traces to confirm critical-path timing under dynamic allocation.</li>
+      </ul>
+
+      <h2>7. Evaluation checklist</h2>
+      <ul>
+        <li>Latency: report median, 95th/99th percentile, and deadline-miss rate.</li>
+        <li>Overhead: quantify allocation/scheduling overhead and cache/bandwidth reprogramming costs.</li>
+        <li>Ablations: compare static partitions vs. dynamic allocation per framework.</li>
+        <li>Reproducibility: document kernel config, hardware topology, workloads, and seeds.</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <div class="brand">
+          <div class="dot"></div>
+          <span class="brand-text">R2D2 Lab</span>
+        </div>
+        <p class="small">Systems & Networking Lab, University of Pennsylvania.</p>
+      </div>
+      <div class="footer-links">
+        <a href="../index.html">Project</a>
+        <a href="../../../index.html">Home</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

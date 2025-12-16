@@ -1,12 +1,12 @@
 :root {
-  --bg: #0f172a;
-  --panel: #111827;
-  --muted: #1f2937;
-  --text: #e5e7eb;
-  --subtle: #94a3b8;
-  --accent: #38bdf8;
-  --accent-strong: #22d3ee;
-  --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --muted: #f1f5f9;
+  --text: #0f172a;
+  --subtle: #475569;
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --shadow: 0 8px 30px rgba(15, 23, 42, 0.12);
   --radius: 12px;
   --max-width: 1100px;
 }
@@ -18,8 +18,8 @@
 body {
   margin: 0;
   font-family: "Helvetica Neue", Arial, sans-serif;
-  background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.08), transparent 25%),
-              radial-gradient(circle at 80% 0%, rgba(34, 211, 238, 0.08), transparent 25%),
+  background: radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.06), transparent 24%),
+              radial-gradient(circle at 80% 0%, rgba(29, 78, 216, 0.05), transparent 22%),
               var(--bg);
   color: var(--text);
   line-height: 1.6;
@@ -45,8 +45,8 @@ a:hover {
   top: 0;
   z-index: 10;
   backdrop-filter: blur(10px);
-  background: rgba(15, 23, 42, 0.7);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .nav {
@@ -78,8 +78,8 @@ a:hover {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2px solid rgba(56, 189, 248, 0.6);
-  box-shadow: 0 0 18px rgba(56, 189, 248, 0.4);
+  border: 2px solid rgba(37, 99, 235, 0.35);
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.25);
   object-fit: cover;
 }
 
@@ -92,7 +92,7 @@ a:hover {
   height: 14px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  box-shadow: 0 0 18px rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.45);
 }
 
 .hero {
@@ -143,7 +143,7 @@ h1, h2, h3 {
 
 .button.primary {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  color: #0b1224;
+  color: #ffffff;
   box-shadow: var(--shadow);
 }
 
@@ -152,7 +152,7 @@ h1, h2, h3 {
 }
 
 .button.ghost {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(15, 23, 42, 0.1);
   color: var(--text);
 }
 
@@ -171,7 +171,7 @@ h1, h2, h3 {
   background: var(--panel);
   padding: 22px 24px;
   border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(15, 23, 42, 0.06);
   box-shadow: var(--shadow);
 }
 
@@ -184,7 +184,7 @@ h1, h2, h3 {
 }
 
 .section.shaded {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(15, 23, 42, 0.02);
 }
 
 .two-col {
@@ -210,19 +210,19 @@ h1, h2, h3 {
 }
 
 .pill-list li {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(37, 99, 235, 0.08);
   border-radius: 999px;
   padding: 8px 12px;
   font-weight: 600;
   color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.15);
 }
 
 .pill {
   display: inline-block;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.05);
   color: var(--subtle);
   font-weight: 700;
   font-size: 12px;
@@ -236,7 +236,7 @@ h1, h2, h3 {
 
 .check-list li {
   padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .check-list li:last-child {
@@ -259,7 +259,7 @@ h1, h2, h3 {
 
 .site-footer {
   padding: 26px 0 40px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .footer-grid {
