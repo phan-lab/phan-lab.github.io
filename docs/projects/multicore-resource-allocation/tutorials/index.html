@@ -3,102 +3,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tutorials | Multicore Resource Allocation</title>
-  <link rel="stylesheet" href="../../../style.css?v=2">
+  <title>DNA System Tutorial | R2D2 Lab</title>
+  <link rel="stylesheet" href="../../../style.css?v=3">
 </head>
 <body>
   <header class="site-header">
     <div class="container nav">
       <div class="brand">
-        <img class="brand-logo" src="https://avatars.githubusercontent.com/phan-lab" alt="R2D2 Lab logo">
+        <div class="dot"></div>
         <span class="brand-text">R2D2 Lab</span>
       </div>
       <nav>
-        <a href="../index.html">Project Home</a>
-        <a href="../../../index.html#projects">All Projects</a>
+        <a href="../../../index.html">Home</a>
+        <a href="../index.html">Project</a>
+        <a class="active" href="./index.html">Tutorials</a>
       </nav>
     </div>
   </header>
 
-  <main class="section">
-    <div class="container" style="max-width: 840px;">
-      <h1>Tutorials: Multicore Resource Allocation</h1>
-      <p class="lede">
-        Practical guides for setting up platforms, profiling task phases, running allocation frameworks, and
-        interpreting traces on PREEMPT-RT and LITMUSRT.
-      </p>
+  <main>
+    <section class="section">
+      <div class="container">
+        <h1>DNA system tutorial</h1>
+        <p>This page explains how the DNA components fit together, how to build them, and how to run experiments. For deeper context, see the dissertation (Chapter 8: “Systems Integration”): <a href="/media/pdfs/Dissertation_Gifford.pdf" target="_blank" rel="noreferrer">Dissertation_Gifford.pdf</a>.</p>
+        <p><strong>How DNA works (high level)</strong> (<a href="https://www.cis.upenn.edu/~linhphan/papers/rtas21-dna.pdf" target="_blank" rel="noreferrer">original DNA paper</a>): DNA periodically applies custom resource allocations to the currently running tasks. A single-core hrtimer tick wakes the DNA loop, which:
+          <ul>
+            <li>Sees which task is running on each core and updates its metadata (instruction sums from PMU counters).</li>
+            <li>Runs the DNA allocation algorithm using the task’s workload ID and uploaded phase/θ profiles.</li>
+            <li>Programs CAT (cache ways) and MemGuard (bandwidth) per core to enforce the chosen allocation.</li>
+          </ul>
+          Workloads identify themselves once via <code>PR_SET_DNA_WORKLOAD_ID</code>; user space preloads the phase/θ tables via prctl; the kernel metadata and DNA module do the rest at runtime. This tutorial introduces each moving part and how to run it on real hardware, with deeper context in module docs, the DNA paper, and the dissertation.
+        </p>
 
-      <h2>1. Environment setup</h2>
-      <p>
-        Install PREEMPT-RT or LITMUSRT with support for cache partitioning (e.g., CAT) and memory bandwidth
-        control (e.g., MBM/MBA). Ensure perf and tracing are available for phase profiling.
-      </p>
-      <ul>
-        <li>Kernel: enable real-time patch, perf events, and resource-control features (CAT/MBM).</li>
-        <li>Tooling: build schedulers/runtimes (DNA/DADNA, Omni, DECNTR, RASCO) and tracing scripts.</li>
-        <li>Baseline: capture hardware topology (cores, LLC ways, memory controllers) for experiments.</li>
-      </ul>
+        <h2>Component overview</h2>
+        <p>The architecture below shows how the different modules fit together at a high level (see <a href="/media/pdfs/gifford_architecture.pdf" target="_blank" rel="noreferrer">architecture figure</a>):</p>
+        <div style="margin:16px 0;">
+          <embed src="/media/pdfs/gifford_architecture.pdf" type="application/pdf" style="width:100%;max-width:1000px;height:480px;" />
+          <p class="small">If the embed does not load, <a href="/media/pdfs/gifford_architecture.pdf" target="_blank" rel="noreferrer">open the PDF directly</a>.</p>
+        </div>
+        <ul>
+		<li><strong>Kernel support (<a href="https://github.com/phan-lab/linux-research-mirror" target="_blank" rel="noreferrer">linux-research-mirror</a>)</strong>: embeds DNA metadata in <code>task_struct</code>, exposes prctl entry points, and accounts retired instructions when CONFIG_DNA_SUPPORT=y inside the kernel config file (more below on this). It is the anchor that lets user space push phase/θ data and tag workloads; all other components plug into this foundation. For important files, see <code>./kernel/dna.c</code>, <code>./include/linux/dna.h</code>, and <code>./include/uapi/linux/dna.h</code> </li>
+		<li><strong>DNA module (<a href="https://github.com/phan-lab/dna-linux-module" target="_blank" rel="noreferrer">dna-linux-module</a>)</strong>: plugs into the kernel hooks, runs the allocation loop, programs Intel CAT for cache ways, drives hrtimers to sample instructions, and forwards bandwidth updates to MemGuard. It registers the handlers that the kernel prctl path calls, so uploads land in the module’s tables. For important files, see <code>./src/dna_module.c</code> and <code>./run_dna_experiment.sh</code></li>
+          <li><strong>MemGuard (<a href="https://github.com/phan-lab" target="_blank" rel="noreferrer">memguard</a>)</strong>: enforces per-core memory bandwidth budgets. DNA calls into MemGuard (via exported hooks) whenever it adjusts per-core allocations, keeping cache and bandwidth decisions aligned.</li>
+          <li><strong>PARSEC workloads (<a href="https://github.com/phan-lab/parsec-3.0" target="_blank" rel="noreferrer">parsec-3.0</a>)</strong>: the applications run under DNA’s control. Workloads are tagged with IDs so DNA knows which phase/θ tables to apply; the kernel metadata stores these IDs per task.</li>
+          <li><strong>Profiles (rt_profiling/)</strong>: legacy phase/θ tables per workload/cache/bandwidth point. <code>dna_tool</code> uploads these into the kernel via prctl so the module can drive allocations based on instruction progress.</li>
+          <li><strong>Experiment scripts</strong> (per repo): <code>dna/run_dna_experiment.sh</code> (DNA repo) coordinates uploads, tagging, resctrl, MemGuard, and RAPL power summaries; <code>rt_profiling/run_profiler.sh</code> (rt_profiling) drives perf/PMU profiling with CAT+MemGuard; PARSEC’s own scripts build and stage binaries.</li>
+          <li><strong>Data flow</strong>: User space uploads profiles → kernel stores descriptors → DNA module consumes them via registered handlers → DNA module writes cache masks (CAT) and bandwidth budgets (MemGuard) → workloads run under SCHED_DEADLINE with per-task metadata updated on context switches.</li>
+          <li><strong>Control flow</strong>: Workload tags itself via prctl → timers and scheduler accounting update instruction totals → DNA loop decides new cache/bandwidth allocations → MemGuard enforces bandwidth, resctrl/CAT enforces cache ways; results and power stats are exported for analysis.</li>
+        </ul>
 
-      <h2>2. Profiling task phases (DNA/DADNA)</h2>
-      <p>
-        Profile representative runs to discover phase boundaries and resource sensitivity before enabling
-        dynamic allocation.
-      </p>
-      <ul>
-        <li>Collect per-phase metrics (cycles, LLC misses, bandwidth) with perf or hw counters.</li>
-        <li>Identify phases with distinct resource needs and map them to cache/bandwidth profiles.</li>
-        <li>Train the runtime to detect phase transitions and update allocations accordingly.</li>
-      </ul>
+        <h2 id="build">Build steps</h2>
+        <p>Start by compiling and installing the custom kernel—this provides the in-kernel DNA plumbing that all other pieces rely on. You only need to repeat the kernel build/install when you change kernel source code; user-space pieces can be rebuilt independently. Anytime you recompile the kernel, be sure to recompile each module after rebooting into the new kernel. Unless otherwise noted, any commands or directory paths are relative to that modules root directory, so for Linux, run the commands within the base linux-research-mirror directory.</p>
 
-      <h2>3. Running dynamic allocation</h2>
-      <p>
-        Enable the runtime scheduler, register tasks, and allow it to reallocate cache ways and bandwidth
-        based on observed phases or deadlines.
-      </p>
-      <ul>
-        <li>Configure per-task priorities/deadlines and initial cache/bandwidth budgets.</li>
-        <li>Start allocation daemon; verify reallocation events via logs and trace markers.</li>
-        <li>Measure latency distributions and deadline miss ratios before/after dynamic allocation.</li>
-      </ul>
+        <h3>1) Kernel with DNA support</h3>
+        <p>Ensure you have a valid kernel configuration (<code>.config</code>) with PREEMPT_RT and DNA enabled. <code>.config</code> drives every build option; without it the build will fail or miss required features.</p>
+        <ul>
+          <li>On small/big cat machines: a correct <code>.config</code> already exists. This setup is needed only once on a fresh machine.</li>
+          <li>To seed a new machine, copy the current distro config and adjust:
+            <pre>cd linux-research-mirror
+cp /boot/config-$(uname -r) .config
+make menuconfig   # enable PREEMPT_RT, CONFIG_DNA_SUPPORT under General setup</pre>
+          </li>
+        </ul>
+        <p>Build and install (run as root for install steps):</p>
+        <pre>cd linux-research-mirror
+sudo make bzImage -j$(nproc)
+sudo make modules -j$(nproc)
+sudo make modules_install -j$(nproc)
+sudo make install -j$(nproc)</pre>
+	<p>Reboot and select this kernel in the GRUB menu. If desired, set it as the default entry in <code>/etc/default/grub</code> (update with <code>sudo update-grub</code>), so subsequent boots use the DNA-enabled kernel automatically. For additional context, the first make command (bzImage) compiles the core kernel components, this includes most code found under the <code>./kernel/</code> directory path. We then compile the in-tree kernel modules via the make modules command. We then install the modules and core kernel image onto the current machine with the two install commands. The -j flag is to tell Make to use multiple threads to compile faster, and we use the number of enabled processors which is given by $(nproc).</p>
 
-      <h2>4. Multi-mode transitions (Omni)</h2>
-      <p>
-        Use Omni to plan allocations per mode and keep transitions schedulable.
-      </p>
-      <ul>
-        <li>Define modes, task sets, and transition guards/triggers.</li>
-        <li>Compute feasible allocations per mode and during transitions to avoid contention spikes.</li>
-        <li>Trace mode switches and verify deadlines are maintained throughout transitions.</li>
-      </ul>
+        <h3>2) MemGuard </h3>
+        <p>Build MemGuard against the same kernel tree used above, after rebooting. This provides the bandwidth enforcement that DNA calls into.</p>
+        <pre>cd memguard
+make clean; make
+# loaded later in the runscripts with: sudo insmod memguard.ko</pre>
 
-      <h2>5. Control co-design (DECNTR)</h2>
-      <p>
-        Pair controller variants with resource budgets so closed-loop systems stay in safe sets.
-      </p>
-      <ul>
-        <li>List controller options (sampling periods, computational cost) and safety envelopes.</li>
-        <li>Choose allocations and controller variants jointly; deploy and monitor state trajectories.</li>
-        <li>Validate robustness to disturbances while meeting deadlines.</li>
-      </ul>
+        <h3>3) DNA module and tools</h3>
+        <p>Build the out-of-tree DNA kernel module plus the uploader utility that pushes phase/θ tables via prctl.</p>
+        <pre>cd dna
+make clean; maked
+# outputs dna_module.ko and dna_tool, both used by runscripts</pre>
 
-      <h2>6. DAG workloads (RASCO)</h2>
-      <p>
-        Co-design scheduling and per-phase budgets for dependent tasks.
-      </p>
-      <ul>
-        <li>Model the DAG with execution times per resource configuration.</li>
-        <li>Compute placements and budgets that satisfy end-to-end deadlines.</li>
-        <li>Instrument traces to confirm critical-path timing under dynamic allocation.</li>
-      </ul>
+        <h3>4) PARSEC workloads</h3>
+	<p>Compile the PARSEC applications used in the experiments so <code>run_dna_experiment.sh</code> and profiling scripts can launch them. Parsec uses its own build tool chain via a program called parsecmgmt, which is located under <code>./bin</code>. More details about PARSEC can be found online.</p>
+        <pre>cd parsec-3.0
+./bin/parsecmgmt -a clean -p canneal
+./bin/parsecmgmt -a uninstall -p canneal
+./bin/parsecmgmt -a build -p canneal
+	# This will build the canneal application.</pre>
 
-      <h2>7. Evaluation checklist</h2>
-      <ul>
-        <li>Latency: report median, 95th/99th percentile, and deadline-miss rate.</li>
-        <li>Overhead: quantify allocation/scheduling overhead and cache/bandwidth reprogramming costs.</li>
-        <li>Ablations: compare static partitions vs. dynamic allocation per framework.</li>
-        <li>Reproducibility: document kernel config, hardware topology, workloads, and seeds.</li>
-      </ul>
-    </div>
+        <h2 id="experiments">Running experiments</h2>
+	<p>The easiest way to run an experiment is with <code>./run_dna_experiment.sh</code>. This script has many configuration options, which you can explore by calling it with no arguments. The most fundamental way to run a set of experiments is to pass it the paths to the directories that contain the individual tasksets and phase and theta information.</p>
+	<p>For example: <code>sudo ./run_dna_experiment.sh ../../rtas26_sched_results/tasksets/tasksets/ ../../data/all_thresholds_empirical/</code></p>
+	<p>If you explore the taskset directory above, you will notice that the script is able to take a parent directory that contains subdirectories that vary their taskset utilization. The script is able to process each taskset utilization subdirectory in order. The output is saved by default to <code>~/output/</code>, and the runscript will check this direcotry and avoid rerunning any experiments that already have output generated, letting you stop and resume experiments in case you need to reboot the machine.</p>
+
+        <h2 id="profiling">Profiling a new task</h2>
+        <p>To gather raw data for phase/θ tables, profile the workload with the provided perf/PMU helper. This lives in the <code>rt_profiling</code> tree and exercises the task under CAT+MemGuard while sampling counters.</p>
+        <h3>Using <code>run_profiler.sh</code> (rt_profiling)</h3>
+        <pre>cd rt_profiling
+sudo ./run_profiler.sh &lt;tag&gt; &lt;runtime_ns&gt; -- &lt;command&gt; [args...]</pre>
+        <p>Example:</p>
+        <pre>sudo ./run_profiler.sh canneal 20000000 -- ./targets/canneal input args...</pre>
+        <p>What it does:</p>
+        <ul>
+          <li>Sets up SCHED_DEADLINE for the target and pins it to a CPU.</li>
+          <li>Programs CAT/MemGuard budgets for the run (using your env defaults or overrides).</li>
+          <li>Runs <code>perf stat</code> with configurable events (default: instructions, LLC-loads, LLC-load-misses) at a fixed interval (<code>PERF_INTERVAL_MS</code>, default 10 ms).</li>
+          <li>Collects logs under a tag-specific output directory for later analysis into phase/θ tables.</li>
+        </ul>
+        <p>Tune via environment variables (see script header): <code>CPU_INDEX</code>, <code>PERF_EVENTS</code>, <code>PERF_INTERVAL_MS</code>, <code>DVFS_START_MHZ</code>/<code>DVFS_END_MHZ</code>/<code>DVFS_STEP_MHZ</code>, <code>MEMBW_START</code>/<code>MEMBW_STEP</code>/<code>MEMBW_BASE_OTHER</code>, and paths to PARSEC binaries/inputs. Use the collected counter traces to derive per-phase instruction regions and θ values before feeding them to <code>dna_tool</code>.</p>
+	<p>Please be aware that a small modification is needed within the application itself to tell our profile tool to start and end recording. You can see examples of this within currently supported PARSEC applications.</p>
+
+        <h2>References</h2>
+        <ul>
+          <li><code>dna/README.md</code> – module overview and quick start (dna-linux-module repo)</li>
+          <li><code>dna/dna_module.c</code> – source code overview and function interactions</li>
+          <li><code>dna/run_dna_experiment.sh</code> – experiment orchestration (dna-linux-module repo)</li>
+          <li><code>dna/analyze_dna_bench.py</code> – parsing/plotting results (dna-linux-module repo)</li>
+          <li><code>memguard/README.md</code> – bandwidth control and debugfs interface (memguard repo)</li>
+          <li><code>rt_profiling/run_profiler.sh</code> – perf-based profiling helper (rt_profiling tree)</li>
+        </ul>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -108,11 +135,11 @@
           <div class="dot"></div>
           <span class="brand-text">R2D2 Lab</span>
         </div>
-        <p class="small">Systems & Networking Lab, University of Pennsylvania.</p>
+        <p class="small">Systems &amp; Networking Lab, University of Pennsylvania.</p>
       </div>
       <div class="footer-links">
-        <a href="../index.html">Project</a>
         <a href="../../../index.html">Home</a>
+        <a href="../index.html">Project</a>
       </div>
     </div>
   </footer>
